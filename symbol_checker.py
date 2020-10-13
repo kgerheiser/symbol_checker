@@ -7,9 +7,19 @@ import argparse
 import re
 
 class Symbol:
-    def __init__(self, name, kind):
+    def __init__(self, name, kind, object_file):
         self.name = name
         self.kind = kind
+        self.object_file = object_file
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __eq__(self, other):
+        return self.name == other.name
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
         
 class NMParser:
     
@@ -22,33 +32,52 @@ class NMParser:
         for line in nm:
             self.insert(line)
 
-            
     #  Parses the file one line at a time 
     def insert(self, line):
         # Return if line is blank
         if line == "\n":
             return
+        if self.name in line:
+            self.current_object = line[line.find("(")+1:line.find(")")]
         if m := re.match(r'(.*) ([TtSsUu]) (\w+)', line):
             symbol_address = m.group(1)
             symbol_kind = m.group(2) # sS, tT, uU, etc
             symbol_name = m.group(3)
 
-            symbol = Symbol(symbol_name, symbol_kind)
-            self.symbols.add(symbol_name)
+            symbol = Symbol(symbol_name, symbol_kind, self.current_object)
+            self.symbols.add(symbol)
         
 parser = argparse.ArgumentParser(description='Find what library symbols are used in another library or executable')
-parser.add_argument("src_lib", help = "the library file to run nm on")
-parser.add_argument("consumer_lib", help = "The executbale/library that uses the first library")
+parser.add_argument("src", help = "the library file to run nm on")
+parser.add_argument("bin", help = "The executbale/library that uses the first library")
 
 args = parser.parse_args()
 
-src_lib_name = args.src_lib
-consumer_lib_name = args.consumer_lib
+src_name = args.src
+bin_name = args.bin
 
-src_lib = NMParser(src_lib_name, "--defined-only")
-consumer_lib = NMParser(consumer_lib_name, "--extern-only")
+src_nm = NMParser(src_name, "--defined-only")
+lib_symbols = []
 
-print(f"Symbols provided by '{src_lib_name}' that are used by '{consumer_lib_name}':")
-for symbol in consumer_lib.symbols.intersection(src_lib.symbols):
-    print("   ", symbol)
+if os.path.exists(bin_name):
+    if os.path.isfile(bin_name):
+        lib_symbols.append(NMParser(bin_name, "--extern-only"))
+    else:
+        for root, dirs, files in os.walk(bin_name):
+            for filename in files:
+                print(filename)
+                if src_name not in filename:
+                    lib_symbols.append(NMParser(os.path.join(bin_name, filename), "--extern-only"))
+else:
+    print("bin doesn't exist")
+
+
+for lib in lib_symbols:
+    print(f"Symbols provided by '{src_name}' that are used by '{lib.name}':")
+    intersection = lib.symbols.intersection(src_nm.symbols)
+    if not intersection:
+        print("    None")
+    else:
+        for symbol in intersection:
+            print("   ", symbol.name, " from ", symbol.object_file)
 
