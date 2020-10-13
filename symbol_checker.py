@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# requires python 3.8 for the walrus tusks := operator
 import subprocess
 import os
 import glob
@@ -39,7 +38,9 @@ class NMParser:
             return
         if self.name in line:
             self.current_object = line[line.find("(")+1:line.find(")")]
-        if m := re.match(r'(.*) ([TtSsUu]) (\w+)', line):
+
+        m = re.match(r'(.*) ([TtSsUu]) (\w+)', line)
+        if m:
             symbol_address = m.group(1)
             symbol_kind = m.group(2) # sS, tT, uU, etc
             symbol_name = m.group(3)
