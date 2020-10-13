@@ -1,5 +1,8 @@
 # symbol_checker
-Reads in a library and an executable (or another library, or a directory) and displays which symbols from the first library are used
+Reads in a library and an executable (or another library, or a directory) and displays which symbols from the first library are used.
+
+
+Example:
 
 ```
 /symbol_checker.py ./libsp_4.a NEMS.exe
